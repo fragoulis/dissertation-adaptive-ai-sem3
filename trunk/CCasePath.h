@@ -36,6 +36,9 @@ public:
     //! number of vertical tiles on the map.
     bool CheckSize() const;
 
+    //! Returns the fitness.
+    double GetFitness() const { return m_fitness; }
+
     //! Writes the path to a stream.
     void Save( std::ostream &out ) const;
 

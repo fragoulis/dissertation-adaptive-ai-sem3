@@ -23,6 +23,9 @@ private:
     //! The initial position on the grid.
     position2di m_initialGridPos;
 
+    //! The last position on the grid before the current.
+    position2di m_previousGridPos;
+
     //! Unit's current health.
     int m_iHealth;
 
@@ -37,6 +40,9 @@ private:
 
     //! The direction is which the unit is moving.
     vector2df m_direction;
+
+    //! The action to be followed.
+    int m_action;
 
 public:
     //! Constructor.
@@ -110,4 +116,7 @@ public:
 
     //! Serializes the object.
     virtual void Write( stringw &out ) const;
+
+    //! This is executed after rendering.
+    void Update();
 };

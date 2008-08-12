@@ -30,6 +30,7 @@ const char* action_name(int i)
 // ----------------------------------------------------------------------------
 kNN::kNN():
 m_state(ALGO_STARTING),
+m_step(STATE_CHOOSE_ACTION),
 K(5),
 m_updateThreshold(0.7)
 {
@@ -123,17 +124,62 @@ void kNN::RunAlgo( CCase &newcase, CUnit &unit )
 // ----------------------------------------------------------------------------
 void kNN::_RunNormal( CCase &newcase, CUnit &unit )
 {
-    _log_2n("Unit is at: ", unit.GetGridPosition().X, ", ", unit.GetGridPosition().Y);
+    if( m_casebase.size() == 0 )
+    {
+        _RunRandomly(newcase, unit);
+        return;
+    }
 
+    // Retrieve latest case path which we will need to update
+    CCasePath& casepath = _Initialize();
+
+    // ________________________________________________________________________
+    if( STATE_CHOOSE_ACTION == m_step )
+    {
+        _log_2n("Unit is at: ", unit.GetGridPosition().X, ", ", unit.GetGridPosition().Y);
+
+        _ChooseAction(newcase);
+
+        m_step = STATE_PAUSED;
+    }
+
+    // ________________________________________________________________________
+    if( STATE_GET_FITNESS == m_step )
+    {
+        CCase *oc = _ActOnAction(unit);
+        if( oc )
+        {
+            // If case comparison does not find anything similar, go ahead
+            // and add the new case.
+            newcase.SetAction(m_action);
+            newcase.SetFitness(m_fitness);
+
+            _log_2n("Adding new case...[action=", action_name(m_action), " fitness=", m_fitness );
+
+            // Push case to casebase.
+            m_casebase.push_back(newcase);
+
+            _Finalize(casepath, & (m_casebase.back()), unit);
+        }
+        else
+        {
+            _Finalize(casepath, oc, unit);
+        }
+
+        m_step = STATE_CHOOSE_ACTION;
+    }
+
+}
+
+// ----------------------------------------------------------------------------
+void kNN::_ChooseAction( CCase &newcase )
+{
     E_ACTION chosen_action  = DOWN;
     const int casebase_size = (int) m_casebase.size();
     const int actual_k      = ( K > casebase_size ) ? casebase_size : K;
     
     m_k_cases.clear();
     m_k_cases.resize(actual_k);
-
-    // Retrieve latest case path which we will need to update
-    CCasePath& casepath = _Initialize(unit);
 
     // Iterate through the whole casebase and save the K-cases closest to the 
     // queried case.
@@ -142,6 +188,8 @@ void kNN::_RunNormal( CCase &newcase, CUnit &unit )
     {
         bool placed = false;
         CCase &oldcase = (*it);
+        oldcase.SetText(0);
+
         const int d = oldcase.ComputeDistance( newcase );
         assert(oldcase.GetAction()>=0);
         for( int i=0; i<actual_k && !placed; i++ )
@@ -223,10 +271,14 @@ void kNN::_RunNormal( CCase &newcase, CUnit &unit )
     std::cout << action_name(chosen_action) << std::endl;
 #endif
 
-    // Run the action and retrieve a fitness
-    m_fitness = unit.ActOn(chosen_action);
+    m_action = chosen_action;
+}
 
-    _log_2n("Unit moved to: ", unit.GetGridPosition().X, ", ", unit.GetGridPosition().Y);
+// ----------------------------------------------------------------------------
+CCase* kNN::_ActOnAction(CUnit &unit )
+{
+    // Run the action and retrieve a fitness
+    m_fitness = unit.ActOn(m_action);
 
     _CheckFitness();
 
@@ -242,7 +294,7 @@ void kNN::_RunNormal( CCase &newcase, CUnit &unit )
         
         if( 0 == oldcase.distance )
         {   
-            if( chosen_action == pCase->GetAction() )
+            if( m_action == pCase->GetAction() )
             {
                 if( !irr::core::equals( (float)pCase->GetFitness(), (float)m_fitness ) )
                 {
@@ -255,37 +307,23 @@ void kNN::_RunNormal( CCase &newcase, CUnit &unit )
                     _log_n("Average case: ", pCase->GetFitness());
                 }
 
-                _Finalize(casepath, pCase);
-
                 // Finally return. There shouldn't be anynore checks because,
                 // since we found a similar case already we SHOULD NOT find 
                 // another one.
-                return;
+                return pCase;
             }
         }
 
     } // for 
 
-    // If case comparison does not find anything similar, go ahead
-    // and add the new case.
-    newcase.SetAction((E_ACTION)chosen_action);
-    newcase.SetFitness(m_fitness);
-
-    _log_2n("Adding new case...[action=", action_name(chosen_action), " fitness=", m_fitness );
-
-    // Push case to casebase.
-    m_casebase.push_back(newcase);
-
-    _Finalize(casepath, & (m_casebase.back()));
+    return 0;
 }
 
 // ----------------------------------------------------------------------------
 void kNN::_RunRandomly( CCase &newcase, CUnit &unit )
 {
-    _log_2n("Unit is at: ", unit.GetGridPosition().X, ", ", unit.GetGridPosition().Y);
-
     // Retrieve latest case path which we will need to update
-    CCasePath& casepath = _Initialize(unit);
+    CCasePath& casepath = _Initialize();
 
     // Choose a random action
     E_ACTION chosen_action = (E_ACTION)(rand()%NUM_OF_ACTIONS);
@@ -324,7 +362,7 @@ void kNN::_RunRandomly( CCase &newcase, CUnit &unit )
                     _log_n("Average case: ", oldcase.GetFitness());
                 }
                 
-                _Finalize(casepath, &oldcase);
+                _Finalize(casepath, &oldcase, unit);
 
                 // Finally return. There shouldn't be anynore checks because,
                 // since we found a similar case already we SHOULD NOT find 
@@ -345,7 +383,7 @@ void kNN::_RunRandomly( CCase &newcase, CUnit &unit )
     // Push case to casebase.
     m_casebase.push_back(newcase);
 
-    _Finalize(casepath, & (m_casebase.back()));
+    _Finalize(casepath, & (m_casebase.back()), unit);
 }
 
 // ----------------------------------------------------------------------------
@@ -354,24 +392,23 @@ void kNN::_CheckFitness()
     // If fitness is zero and the agent is dead, stop the algo.
     if( m_fitness < 0.0001 )
     {
-        m_state = ALGO_STOPPING; // death
+        _Stop(); // death
     }
     else if( m_fitness > 1.0 ) // completion
     {
-        m_state = ALGO_STOPPING;
+        _Stop();
         m_fitness = 1.0;
     }
 }
 
 // ----------------------------------------------------------------------------
-CCasePath& kNN::_Initialize( CUnit &unit )
+CCasePath& kNN::_Initialize()
 {
     // If algorithm is starting fresh create a new case path
     if( _IsAlgoStarting() )
     {
         m_casepaths.push_back(CCasePath());
-        m_state = ALGO_RUNNING;
-        unit.Reset();
+        _Run();
     }
 
     // Retrieve latest case path which we will need to update
@@ -379,7 +416,7 @@ CCasePath& kNN::_Initialize( CUnit &unit )
 }
 
 // ----------------------------------------------------------------------------
-void kNN::_Finalize( CCasePath &cp, CCase *c )
+void kNN::_Finalize( CCasePath &cp, CCase *c, CUnit &unit )
 {
     // Add this case to history.
     cp.AddCase( c );
@@ -393,7 +430,8 @@ void kNN::_Finalize( CCasePath &cp, CCase *c )
     if( _IsAlgoStopping() )
     {
         cp.Close();
-        m_state = ALGO_STARTING;
+        _Start();
+        unit.Reset();
     }
 }
 
@@ -438,6 +476,8 @@ void kNN::Save() const
     std::ofstream case_out( file.c_str() );
     assert(case_out.is_open());
 
+    if(!case_out.is_open()) return;
+
     const int size = (int)m_casebase.size();
     CaseBase::const_iterator it = m_casebase.begin();
     for( 
@@ -450,8 +490,6 @@ void kNN::Save() const
         if( cur < size-1 ) 
             case_out << std::endl;
     }
-
-    case_out;
 }
 
 // ----------------------------------------------------------------------------
@@ -464,6 +502,9 @@ void kNN::SaveResults() const
     std::ofstream path_out( file.c_str() );
     assert(path_out.is_open());
 
+    if(!path_out.is_open()) return;
+
+    double total_fitness = 0.0;
     const int size = (int)m_casepaths.size();
     CasePaths::const_iterator it = m_casepaths.begin();
     for(
@@ -476,8 +517,13 @@ void kNN::SaveResults() const
             path_out << cur << ": ";
 
             (*it).Save(path_out);
+
+            total_fitness += (*it).GetFitness();
         }
     }
+
+    path_out << "Average fitness = ";
+    path_out << (total_fitness / size);
 }
 
 // ----------------------------------------------------------------------------
@@ -491,6 +537,8 @@ void kNN::Load()
 
     std::ifstream case_in( file.c_str() );
     assert(case_in.is_open());
+
+    if(!case_in.is_open()) return;
 
     int cs = 0;
     while(!case_in.eof())

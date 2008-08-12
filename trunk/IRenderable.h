@@ -4,9 +4,6 @@
 class IRenderable
 {
 protected:
-    //! Holds the default tile size read in map
-    static dimension2di Tilesize;
-
     //! Active flag.
     bool m_bActive;
 
@@ -23,9 +20,6 @@ public:
     //! Override this to render the object.
     virtual void Render() const = 0;
 
-    //! Sets the common to all objects tilesize.
-    static void SetTilesize( const core::dimension2di &dim ) { Tilesize = dim; }
-
     //! Activates the object.
     void Activate() { m_bActive = true; }
 
@@ -34,6 +28,9 @@ public:
 
     //! Returns if object is active.
     bool IsActive() const { return m_bActive; }
+
+    //! Sets the text.
+    void SetText( const wchar_t *text ) { m_text->setText(text); }
 
 public:
     //! Draws a rectangle.

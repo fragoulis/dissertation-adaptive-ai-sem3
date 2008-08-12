@@ -27,11 +27,18 @@ private:
     {
         ALGO_STARTING,
         ALGO_RUNNING,
-        ALGO_STOPPING
+        ALGO_STOPPING,
+        
+        STATE_CHOOSE_ACTION,
+        STATE_PAUSED,
+        STATE_GET_FITNESS
     };
 
     //! Algorithm's current state.
     ALGO_STATE m_state;
+
+    //! Algorithm's step state.
+    ALGO_STATE m_step;
 
     //! The K number.
     int K;
@@ -50,6 +57,9 @@ private:
 
     //! The list of K selected cases.
     _k_cases m_k_cases;
+
+    //! The chosen action.
+    E_ACTION m_action;
 
 public:
     //! Compares a new case with all cases in the case base.
@@ -80,6 +90,9 @@ public:
     //! Debugs the algorithm graphically.
     virtual void Render() const;
 
+    //! Gives the signal to continue the algorith.
+    void Step() { if(STATE_PAUSED == m_step) m_step = STATE_GET_FITNESS; }
+
 private:
     //! Constructor.
     kNN();
@@ -99,17 +112,32 @@ private:
     //! Checks if algorithm is stopping.
     bool _IsAlgoStopping() const { return ( ALGO_STOPPING == m_state ); }
 
+    //! Sets algorithm to starting state.
+    void _Start() { m_state = ALGO_STARTING; }
+
+    //! Sets algorithm to running state.
+    void _Run() { m_state = ALGO_RUNNING; }
+
+    //! Sets algorithm to stopping state.
+    void _Stop() { m_state = ALGO_STOPPING; }
+
     //! Runs the algorithm for learning randomly.
     void _RunRandomly( CCase &newcase, CUnit &unit );
 
     //! Runs the algorithm for learning and adapting.
     void _RunNormal( CCase &newcase, CUnit &unit );
 
-    //! Final steps of the algorithm.
-    void _Finalize( CCasePath &cp, CCase *c );
-
     //! First steps of the algorithm.
-    CCasePath& _Initialize( CUnit &unit );
+    CCasePath& _Initialize();
+
+    //! Final steps of the algorithm.
+    void _Finalize( CCasePath &cp, CCase *c, CUnit &unit );
+
+    //! Chooses an action.
+    void _ChooseAction( CCase &newcase );
+
+    //! Acts on the decided action.
+    CCase* _ActOnAction( CUnit &unit );
 
     //! Checks the resulting fitness.
     void _CheckFitness();

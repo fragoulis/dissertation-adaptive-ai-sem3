@@ -1,13 +1,17 @@
 #include "IRenderable.h"
-
-// ----------------------------------------------------------------------------
-dimension2di IRenderable::Tilesize;
+#include "Grid.h"
 
 // ----------------------------------------------------------------------------
 IRenderable::IRenderable():
 m_bActive(true)
 {
-    m_text = rts::gui->addStaticText(0, rect<s32>(0,0,Tilesize.Width,Tilesize.Height));
+    m_text = rts::gui->addStaticText(0, 
+        rect<s32>(
+            0,0,
+            Grid::Get().tilesize.Width,
+            Grid::Get().tilesize.Height
+            )
+        );
 }
 
 // ----------------------------------------------------------------------------
@@ -17,7 +21,7 @@ void IRenderable::DrawRectangle(
 {
     rts::video->draw2DRectangle( 
         color, 
-        core::rect<s32>( position, Tilesize ) 
+        core::rect<s32>( position, Grid::Get().tilesize ) 
         );
 }
 

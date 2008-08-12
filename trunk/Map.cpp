@@ -51,8 +51,6 @@ void Map::Load( const char *filename )
     assert(grid.width>0);
     assert(grid.height>0);
 
-    IObject::SetTilesize( grid.tilesize );
-
     grid.tilesX = grid.width / grid.tilesize.Width;
     grid.tilesY = grid.height / grid.tilesize.Height;
     grid.InitTiles();
@@ -80,10 +78,9 @@ void Map::Load( const char *filename )
                 {
                     // Allocate and initialize unit
                     CUnit *unit = MgrUnit::Get().CreateUnit(sType);
-                    unit->Set(iCol, iRow);
                     unit->SetInitialGridPos( position2di(iCol, iRow) );
                     unit->SetType(iType);
-                    grid.SetOccupier(iCol, iRow, unit);
+                    unit->Reset();
 
                     // Add it to its team
                     CTeam *team = MgrTeam::Get().GetData(sTeam);
@@ -115,9 +112,6 @@ void Map::Load( const char *filename )
             break;
         }
     } // while 
-
-    // specific to kNN testing
-    MgrUnit::Get().GetActor().Reset();
 
     // delete the xml parser after usage
     delete xml;
