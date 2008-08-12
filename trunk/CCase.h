@@ -2,7 +2,7 @@
 #include "CAction.h"
 #include "CState.h"
 
-class CCase
+class CCase : public IRenderable
 {
 private:
     //! The state.
@@ -44,4 +44,7 @@ public:
 
     //! Loads the case from stream.
     void Load( std::istream &in );
+
+    //! Represents the case graphically.
+    virtual void Render() const;
 };

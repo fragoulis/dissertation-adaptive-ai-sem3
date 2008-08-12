@@ -6,13 +6,13 @@
 #include <ctime>
 
 #include "./CColorManager.h"
-#include "./CGunManager.h"
 #include "./CTeamManager.h"
 #include "./CUnitManager.h"
 #include "./CTerrainManager.h"
 #include "./CAIManager.h"
 #include "./Grid.h"
 #include "./CObjectTypeManager.h"
+#include "./config.h"
 
 // ----------------------------------------------------------------------------
 CGameEngine::CGameEngine():
@@ -35,14 +35,14 @@ void CGameEngine::Initialize()
 {
     SRAND();
 
-    m_config.init("data/config.xml");
+    config::init("data/config.xml");
 
     // Initialzie irrlicht device
     m_device = createDevice( 
         video::EDT_OPENGL,              // We will use the OpenGL device.
-        m_config.wndSize,               // Window size. 
+        config::wndSize,               // Window size. 
         16,                             // Amount of bits per pixel when in fullscreen mode.
-        m_config.fullscreen,            // Fullscreen flag.
+        config::fullscreen,            // Fullscreen flag.
         false,                          // Stencil buffer use flag.
         false,                          // VSync on/off.
         this);                          // An EventReceiver object.
@@ -63,7 +63,14 @@ void CGameEngine::Initialize()
     projection.buildProjectionMatrixOrthoLH(100.0f, 100.0f, -1.0f, 1.0f);
     cam->setProjectionMatrix(projection);
 
-    m_dbgText = rts::addStaticText(L"", rect<s32>(520,10,200,300));
+    Grid& grid = Grid::Get();
+    int tx = ( grid.tilesX + 1 )* grid.tilesize.Width;
+    int ty = grid.tilesize.Height;
+
+    m_dbgText = rts::addStaticText(
+        L"Press \"Space to start\"", 
+        rect<s32>(tx,ty,300,300)
+        );
 }
 
 // ----------------------------------------------------------------------------
@@ -73,11 +80,10 @@ void CGameEngine::ReadXMLs()
     // TODO: Read the filename's from file
 
     MgrColor::Get().Read("data/colors.xml" );
-    MgrGun::Get().Read("data/guns.xml" );
     MgrTeam::Get().Read("data/teams.xml" );
     MgrUnit::Get().Read("data/units.xml" );
     MgrTerrain::Get().Read("data/terrain.xml" );
-    Map::Get().Load(m_config.active_map.c_str());
+    Map::Get().Load(config::active_map.c_str());
     MgrAI::Get().Read("data/ai.xml");
 }
 
@@ -89,7 +95,6 @@ void CGameEngine::Deinitialize()
 
     Renderer::Destroy();
     MgrColor::Destroy();
-    MgrGun::Destroy();
     MgrTeam::Destroy();
     MgrAI::Destroy();
     MgrUnit::Destroy();
@@ -102,17 +107,11 @@ void CGameEngine::Deinitialize()
 // ----------------------------------------------------------------------------
 void CGameEngine::Run()
 {
-    //// Pick a unit
-    //CUnit *unit = MgrUnit::Get().GetUnit(0);
-    //// Pick the path start and end
-    //const position2di end( 15, Grid::Get().tilesY-1 );
-    //// Give the unit the command
-    //unit->AddCommand( MgrCmd::Get().CreateGoTo(end) );
-
     m_dtimer.Start();
     while(m_device->run())
 	{
         float dt = m_dtimer.GetDeltaTime();
+        WriteOutDebug(dt);
         if(!m_pause)
             Update( dt );
 
@@ -126,23 +125,6 @@ void CGameEngine::Run()
 // ----------------------------------------------------------------------------
 void CGameEngine::Update(float dt)
 {
-    stringw out;
-    out += L"FPS: ";
-    out += rts::video->getFPS();
-    out += L"\ndt: ";
-    out += dt;
-    out += L"\nPause: ";
-    out += m_pause;
-    out += L"\nStep: ";
-    out += m_step;
-    out += L"\nUpdate period: ";
-    out += MgrAI::Get().GetFrequency();
-    out += L"\n\n";
-    MgrUnit::Get().GetActor().Write(out);
-    kNN::Get().Write(out);
-
-    m_dbgText->setText(out.c_str());
-
     static int current_frame = MgrAI::Get().GetFrequency();
 
     if( current_frame == MgrAI::Get().GetFrequency() )
@@ -153,8 +135,35 @@ void CGameEngine::Update(float dt)
     }
     else
         current_frame++;
-    
-    //MgrUnit::Get().Update(dt);
+}
+
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+void CGameEngine::WriteOutDebug(float dt)
+{
+    stringw out;
+#ifdef _DEBUG
+    out += L"FPS: ";
+    out += rts::video->getFPS();
+    out += L"\ndt: ";
+    out += dt;
+#endif
+    out += L"\nPause: ";
+    out += m_pause;
+    out += L"\nStep: ";
+    out += m_step;
+    out += L"\nUpdate period: ";
+    out += MgrAI::Get().GetFrequency();
+    out += L"\n\n";
+    MgrUnit::Get().GetActor().Write(out);
+    kNN::Get().Write(out);
+
+    out += L"\"P\": to toggle pause mode.\n";
+    out += L"\"O\": to toggle step mode. With step mode ON, press \"Space\" to move.\n";
+    out += L"\"G\": to toggle grid.\n";
+    out += L"\"F\": to toggle field of view.\n";
+
+    m_dbgText->setText(out.c_str());
 }
 
 // ----------------------------------------------------------------------------

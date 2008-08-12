@@ -1,11 +1,9 @@
 #pragma once
 #include "IObject.h"
-#include "CGun.h"
 #include "CUnitDesc.h"
 #include "eAction.h"
 
 class CUnitDesc;
-class CGunDesc;
 class CTeam;
 
 struct _debug 
@@ -31,9 +29,6 @@ private:
     //! Unit's current speed.
     int m_iSpeed;
 
-    //! The unit's gun
-    CGun m_gun;
-
     //! Pointer to the common unit attributes.
     CUnitDesc *m_desc;
 
@@ -52,9 +47,6 @@ public:
 
     //! Sets the team.
     void SetTeam( CTeam *team ) { m_team = team; }
-
-    //! Sets the unit's gun descriptor.
-    void SetGunDesc( CGunDesc *gunDesc ) { m_gun.SetDesc( gunDesc ); }
 
     //! Sets the initial position.
     void SetInitialGridPos( const position2di &pos ) { m_initialGridPos = pos; }
@@ -88,9 +80,6 @@ public:
 
     //! Get defence.
     int GetDefence() const { return m_desc->GetDefence(); }
-
-    //! Returns a non-const reference to the gun.
-    CGun& GetGun() { return m_gun; }
 
     //! Returns the unit's descriptor.
     CUnitDesc* GetDesc() { return m_desc; }

@@ -40,6 +40,10 @@ public:
     //! Used to ease the drawing process.
     void DrawRectangle( const SColor &color, const position2di &position ) const;
 
+    //! Draws a rectangle without using the default tilesize.
+    //! Used to ease the drawing process.
+    void DrawRectangle( const SColor &color, const position2di &position, const dimension2di &size ) const;
+
     //! Draws a 2d line.
     void DrawLine( const position2di &start, const position2di &end, const SColor &color ) const;
 };

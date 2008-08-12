@@ -20,10 +20,10 @@ public:
     int GetFrequency() const { return m_iFrequency; }
 
     //! Increases the frequency by 50%.
-    void SpeedUp() { if( m_iFrequency >= 10 ) m_iFrequency /= 2; }
+    void SpeedUp();
 
     //! Decreases the frequency by 50%.
-    void SlowDown() { if( m_iFrequency <= 50 ) m_iFrequency *= 2; }
+    void SlowDown();
 
     //! Initializes the structure from xml file.
     void Read( const char *filename );

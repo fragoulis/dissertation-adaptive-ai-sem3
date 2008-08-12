@@ -2,7 +2,6 @@
 #include <cassert>
 
 #include "./CColorManager.h"
-#include "./CGunManager.h"
 #include "./CTeamManager.h"
 #include "./CUnitManager.h"
 #include "./CTerrainManager.h"

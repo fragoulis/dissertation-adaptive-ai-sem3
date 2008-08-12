@@ -1,6 +1,5 @@
 #include "CUnitManager.h"
 #include "CColorManager.h"
-#include "CGunManager.h"
 #include "./CObjectTypeManager.h"
 
 // ----------------------------------------------------------------------------
@@ -35,7 +34,6 @@ void CUnitManager::ReadXMLData( IrrXMLReader *xml )
                 // read color attributes from file
                 const char *type  = xml->getAttributeValue("type");
                 const char *name  = xml->getAttributeValue("name");
-                const char *gun   = xml->getAttributeValue("gun");
                 const char *color = xml->getAttributeValue("color");
                 int speed         = xml->getAttributeValueAsInt("max_speed");
                 int speed_ratio   = xml->getAttributeValueAsInt("speed_ratio");
@@ -49,7 +47,6 @@ void CUnitManager::ReadXMLData( IrrXMLReader *xml )
                 // add gun to gun description manager database
                 CUnitDesc *unitDesc = m_data.Get( index );
                 unitDesc->SetName(name);
-                unitDesc->SetGunType(gun);
                 unitDesc->SetMaxSpeed(speed);
                 unitDesc->SetSpeedRatio(speed_ratio);
                 unitDesc->SetMaxHealth(health);
@@ -72,11 +69,9 @@ void CUnitManager::ReadXMLData( IrrXMLReader *xml )
 CUnit* CUnitManager::CreateUnit( const char *type )
 {
     CUnitDesc *unitDesc = GetData(type);
-    CGunDesc *gunDesc = MgrGun::Get().GetData( unitDesc->GetGunType() );
 
     CUnit *new_unit = m_unitPool.get();
     new_unit->SetDesc(unitDesc);
-    new_unit->SetGunDesc(gunDesc);
 
     m_units.push_back(new_unit);
     return new_unit;

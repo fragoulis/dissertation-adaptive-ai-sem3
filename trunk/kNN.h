@@ -6,12 +6,13 @@
 #include <vector>
 #include <string>
 
-class kNN : public Singleton<kNN>
+class kNN : public Singleton<kNN>, public IRenderable
 {
 private:
     friend Singleton<kNN>;
     typedef std::vector<CCase> CaseBase;
     typedef std::vector<CCasePath> CasePaths;
+    typedef std::vector<_case> _k_cases;
 
     //! The game's case base.
     CaseBase m_casebase;
@@ -47,6 +48,9 @@ private:
     //! The current run's fitness.
     double m_fitness;
 
+    //! The list of K selected cases.
+    _k_cases m_k_cases;
+
 public:
     //! Compares a new case with all cases in the case base.
     //! Returns the action the new case should follow.
@@ -72,6 +76,9 @@ public:
 
     //! Initializes the algorithm.
     void Initialize( IrrXMLReader *xml );
+
+    //! Debugs the algorithm graphically.
+    virtual void Render() const;
 
 private:
     //! Constructor.
