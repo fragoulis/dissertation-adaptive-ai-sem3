@@ -3,6 +3,10 @@
 #include "logger.h"
 #include "random.h"
 #include "Map.h"
+#include "Grid.h"
+#include "CUnitManager.h"
+#include "config.h"
+#include "Renderer.h"
 #include <string>
 
 //#define _RANDOM_LEARNING_ON_
@@ -29,6 +33,9 @@ m_state(ALGO_STARTING),
 K(5),
 m_updateThreshold(0.7)
 {
+#ifndef _RANDOM_LEARNING_ON_
+    Renderer::Get().AddObject(this);
+#endif
 }
 
 // ----------------------------------------------------------------------------
@@ -121,7 +128,9 @@ void kNN::_RunNormal( CCase &newcase, CUnit &unit )
     E_ACTION chosen_action  = DOWN;
     const int casebase_size = (int) m_casebase.size();
     const int actual_k      = ( K > casebase_size ) ? casebase_size : K;
-    std::vector<_case> cases(actual_k);
+    
+    m_k_cases.clear();
+    m_k_cases.resize(actual_k);
 
     // Retrieve latest case path which we will need to update
     CCasePath& casepath = _Initialize(unit);
@@ -137,18 +146,18 @@ void kNN::_RunNormal( CCase &newcase, CUnit &unit )
         assert(oldcase.GetAction()>=0);
         for( int i=0; i<actual_k && !placed; i++ )
         {
-            if( d < cases[i].distance )
+            if( d < m_k_cases[i].distance )
             {
                 // if it is,
                 // move all distances one position to the right
                 for( int n=actual_k-1; n>i; n-- )
                 {
-                    cases[n] = cases[n-1];
+                    m_k_cases[n] = m_k_cases[n-1];
                 }
             
                 // put current distance in
-                cases[i].distance = d;
-                cases[i].oCase = &oldcase;
+                m_k_cases[i].distance = d;
+                m_k_cases[i].oCase = &oldcase;
 
                 placed = true;
             } // if 
@@ -166,10 +175,10 @@ void kNN::_RunNormal( CCase &newcase, CUnit &unit )
 
     // Go through the K-cases and extract the action population and
     // corresponding fitness.
-    for( int i=0; i<(int)cases.size(); i++ )
+    for( int i=0; i<(int)m_k_cases.size(); i++ )
     {
-        double fitness = cases[i].oCase->GetFitness();
-        int act = (int) cases[i].oCase->GetAction();
+        double fitness = m_k_cases[i].oCase->GetFitness();
+        int act = (int) m_k_cases[i].oCase->GetAction();
         assert(act>=0);
 
         action_poll[act].votes++;
@@ -225,8 +234,8 @@ void kNN::_RunNormal( CCase &newcase, CUnit &unit )
     // queried case. If two cases are the same (distance equals zero)
     // update, do not add the new case, but instead average the fitness
     // of the two.
-    std::vector<_case>::iterator cit = cases.begin();
-    for(; cit != cases.end(); ++cit )
+    _k_cases::iterator cit = m_k_cases.begin();
+    for(; cit != m_k_cases.end(); ++cit )
     {
         _case &oldcase = (*cit);
         CCase *pCase = oldcase.oCase;
@@ -490,5 +499,41 @@ void kNN::Load()
         CCase newcase;
         newcase.Load(case_in);
         AddCase(newcase);
+    }
+}
+
+// ----------------------------------------------------------------------------
+void kNN::Render() const
+{
+    Grid& grid = Grid::Get();
+    const CUnit &unit = MgrUnit::Get().GetActor();
+    const int MAX_CASES_PER_LINE = 5;
+    const int MAX_CASE_WIDTH = ( config::wndSize.Width - grid.width - 2*grid.tilesize.Width ) / MAX_CASES_PER_LINE;
+
+    CState::s_scaled.scale = (float)MAX_CASE_WIDTH / grid.width;
+    CState::s_scaled.fov = unit.GetFOV();
+    CState::s_scaled.tileWidth  = int((float)grid.tilesize.Width * CState::s_scaled.scale);
+    //CState::s_scaled.tileHeight = int((float)grid.tilesize.Height * CState::s_scaled.scale);
+    CState::s_scaled.tileHeight = CState::s_scaled.tileWidth;
+    CState::s_scaled.gridWidth  = CState::s_scaled.tileWidth * grid.tilesX;
+    CState::s_scaled.gridHeight = CState::s_scaled.tileHeight * unit.GetFOV();
+
+    const int startX = grid.width + grid.tilesize.Width;
+    const int startY = 300;
+
+    int count = 0;
+    _k_cases::const_iterator it = m_k_cases.begin();
+    for(; it != m_k_cases.end(); ++it, ++count )
+    {
+        const CCase &c = * (*it).oCase;
+        const CState &state = c.GetState();
+
+        int cx = count % MAX_CASES_PER_LINE;
+        int cy = ( count - cx ) / MAX_CASES_PER_LINE;
+        int x = startX + cx * ( (grid.tilesize.Width>>1) + CState::s_scaled.gridWidth );
+        int y = startY + cy * ( (grid.tilesize.Height<<3) + CState::s_scaled.gridHeight );
+        state.SetPosition( position2di(x, y) );
+
+        c.Render();
     }
 }

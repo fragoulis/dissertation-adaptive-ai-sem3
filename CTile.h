@@ -45,14 +45,4 @@ public:
 
     //! Serializes the object.
     virtual void Write( stringw &out ) const {}
-
-    // -- Pathfinding specific funtions
-
-    float GoalDistanceEstimate( CTile &nodeGoal );
-	bool IsGoal( CTile &nodeGoal );
-    bool IsGoal( int x, int y );
-	bool GetSuccessors( AStarSearch<CTile> *astarsearch, CTile *parent_node );
-	float GetCost( CTile &successor );
-	bool IsSameState( CTile &rhs );
-
 };

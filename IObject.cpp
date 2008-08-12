@@ -82,8 +82,13 @@ void IObject::SetTile( CTile *tile )
 // ----------------------------------------------------------------------------
 void IObject::Write( stringw &out ) const
 {
-    out += "[";
+    out += L"[";
     out += m_id;
-    out += "] ";
+    out += L"] ";
     _OUT(L"Type: ", MgrObjectType::Get().GetTypeFromInt(m_iType));
+    out += L"Position = (";
+    out += m_gridPosition.X;
+    out += L", ";
+    out += m_gridPosition.Y;
+    out += L")\n";
 }

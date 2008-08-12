@@ -1,7 +1,14 @@
 #pragma once
+#include "IRenderable.h"
 #include "CUnit.h"
 #include <fstream>
 #include <vector>
+
+struct scaled_values
+{
+    float scale;
+    int gridWidth, gridHeight, tileWidth, tileHeight, fov;
+};
 
 /**
  * A game state consists of a represantation of the world at a given time.
@@ -13,14 +20,21 @@
  * direction although available will probably never be chosen.
  *
  */
-class CState
+class CState : public IRenderable
 {
+public:
+    //! Rendering scale.
+    static scaled_values s_scaled;
+
 private:
     typedef std::vector<int> Features;
 
     //! The array of features that constitute a state.
     //! This invloves unit attributes an tile attributes.
     Features m_features;
+
+    //! Unit position. Render specific.
+    mutable position2di m_position;
 
 public:
     //! Initializes the state.
@@ -33,11 +47,20 @@ public:
     double ComputeDistanceScaled( const CState &other ) const;
 
     //! Returns the type id of the tile's occupier.
-    int GetFeature( int index ) const { return m_features[index]; }
+    int GetFeature( int index ) const;
 
     //! Writes the state to a stream.
     void Save( std::ostream &out ) const;
 
     //! Loads the state from stream.
     void Load( std::istream &in );
+
+    //! Sets the position.
+    void SetPosition( const position2di &pos ) const { m_position = pos; }
+
+    //! Returns the position.
+    const position2di& GetPosition() const { return m_position; }
+
+    //! Represents the state graphically.
+    virtual void Render() const;
 };

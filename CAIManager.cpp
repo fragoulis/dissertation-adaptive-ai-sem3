@@ -41,3 +41,15 @@ void CAIManager::Update()
     // and choose an action to follow
     kNN::Get().RunAlgo(newcase, unit);
 }
+
+// ----------------------------------------------------------------------------
+void CAIManager::SpeedUp() 
+{ 
+    if( m_iFrequency >= 20 ) m_iFrequency /= 2; 
+}
+
+// ----------------------------------------------------------------------------
+void CAIManager::SlowDown() 
+{ 
+    if( m_iFrequency <= 40 ) m_iFrequency *= 2; 
+}

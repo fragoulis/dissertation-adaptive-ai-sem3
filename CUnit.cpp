@@ -109,7 +109,6 @@ void CUnit::CloneFrom( IObject *obj )
 
     m_iHealth = dummy->GetHealth();
     m_iSpeed = dummy->GetSpeed();
-    //m_gun = obj->GetRows();
     m_desc = dummy->GetDesc();
 }
 
@@ -148,12 +147,18 @@ void CUnit::Render() const
 
     if( debug.drawFOV )
     {
-        position2di pos = GetCenter();
-        rts::video->draw2DPolygon( 
-            pos, 
-            (float)m_desc->GetFOV() * Tilesize.Height, 
-            SColor(250,200,200,200), 
-            40 
+        position2di ll(
+            Tilesize.Width, 
+            m_realPosition.Y + Tilesize.Height
+            );
+        position2di hr(
+            Grid::Get().width - Tilesize.Width, 
+            m_realPosition.Y + Tilesize.Height + m_desc->GetFOV() * Tilesize.Height
+            );
+
+        rts::video->draw2DRectangle(
+            SColor(250,225,225,225),
+            rect<s32>( ll.X, ll.Y, hr.X, hr.Y )
             );
     }
 
@@ -206,8 +211,7 @@ void CUnit::Update(float dt)
 void CUnit::Write( stringw &out ) const
 {
     IObject::Write(out);
-    m_desc->Write(out);
+    //m_desc->Write(out);
     _OUT(L"Health: ", m_iHealth);
-    _OUT(L"Speed: ", m_iSpeed);
-    m_gun.Write(out);
+    //_OUT(L"Speed: ", m_iSpeed);
 }

@@ -1,20 +1,114 @@
 #include "CState.h"
 #include "Grid.h"
 #include "logger.h"
+#include "CColorManager.h"
+#include "CObjectTypeManager.h"
+#include "CTerrainManager.h"
 
 #define _USE_POSITION_FEATURE_
 
 #ifdef _USE_POSITION_FEATURE_
-const int FEATURES = 73;
+const int FEATURES = 61;
 #else
-const int FEATURES = 72;
+const int FEATURES = 60;
 #endif
+
+// ----------------------------------------------------------------------------
+scaled_values CState::s_scaled;
+
+// ----------------------------------------------------------------------------
+void CState::Render() const
+{
+    Grid& grid = Grid::Get();
+
+    const SColor &grey = * (MgrColor::Get().GetData("light_grey"));
+    
+    const int endX = m_position.X + s_scaled.gridWidth - s_scaled.tileWidth;
+    const int nLinesHoriz = s_scaled.fov + 1;
+    for( int line=0; line<nLinesHoriz; line++ )
+    {
+        const int lineY = m_position.Y + line * s_scaled.tileHeight;
+        DrawLine(
+            position2di(m_position.X, lineY),
+            position2di(endX, lineY),
+            grey
+            );
+    }
+
+    const int endY = m_position.Y + s_scaled.gridHeight;
+    const int nLinesVert = grid.tilesX - 1;
+    for( int line=1; line<=nLinesVert; line++ )
+    {
+        const int lineX = m_position.X + line * s_scaled.tileWidth;
+        DrawLine(
+            position2di(lineX, m_position.Y),
+            position2di(lineX, endY),
+            grey
+            );
+    }
+
+    Features::const_iterator it = m_features.begin();
+    for(
+        int i=0; 
+        it != m_features.end(); 
+        ++it, ++i )
+    {
+#ifdef _USE_POSITION_FEATURE_
+        if( i == FEATURES - 1 )
+        {
+            DrawRectangle(
+                * (MgrColor::Get().GetData("green")), 
+                position2di(
+                    m_position.X + (*it) * s_scaled.tileWidth, 
+                    m_position.Y - s_scaled.tileHeight
+                    ),
+                dimension2di(
+                    s_scaled.tileWidth,
+                    s_scaled.tileHeight
+                    )
+                );
+            continue;
+        }
+#endif
+
+        int iType = *it;
+        if( iType==0 ) continue;
+         
+        iType /= (i+1);
+
+        const stringw &sType = MgrObjectType::Get().GetTypeFromInt(iType);
+        const CTerrainObject *obj = MgrTerrain::Get().GetData(sType);
+
+        const int x = i % grid.tilesX;
+        const int y = ( i - x ) / grid.tilesX;
+        DrawRectangle(
+            obj->GetColor(), 
+            position2di(
+                m_position.X + x*s_scaled.tileWidth, 
+                m_position.Y + y*s_scaled.tileHeight
+                ),
+            dimension2di(
+                s_scaled.tileWidth,
+                s_scaled.tileHeight
+                )
+            );
+    }
+}
+
+// ----------------------------------------------------------------------------
+int CState::GetFeature( int index ) const 
+{ 
+    if( index < 0 )
+        index = m_features.size() + index;
+
+    return m_features[index]; 
+}
 
 // ----------------------------------------------------------------------------
 void CState::Initialize( const CUnit &unit )
 {
     // use field of view to determine how many tiles the unit sees ahead
-    int fov = unit.GetFOV();
+    const int fov = unit.GetFOV();
 
     Grid& grid = Grid::Get();
     int x = unit.GetGridPosition().X;
@@ -27,7 +121,7 @@ void CState::Initialize( const CUnit &unit )
     // row is on and y equals its row until row equals the fov
 
     int start   = ( y + 1 ) * grid.tilesX;
-    int end     = grid.tilesX + ( y + 1 + fov ) * grid.tilesX;
+    int end     = grid.tilesX + ( y + fov ) * grid.tilesX;
     int to      = end;
     int abs_end = grid.tilesX * grid.tilesY;
     int weight  = 1;

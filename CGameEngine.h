@@ -1,6 +1,5 @@
 #pragma once
 #include "./Irrext.h"
-#include "./config.h"
 #include "./DeltaTimer.h"
 
 class CGameEngine : public IEventReceiver 
@@ -33,13 +32,13 @@ public:
     //! Receives system events.
     virtual bool OnEvent( const SEvent& event );
 
+    //! Writes out debug information to window.
+    void WriteOutDebug(float dt);
+
 private: // variables
 
     //! Irrlicht's main device object
     IrrlichtDevice *m_device;
-    
-    //! Read the configuration file.
-    config m_config;
 
     //! Debugging text.
     IGUIStaticText *m_dbgText;
