@@ -17,8 +17,8 @@
 // ----------------------------------------------------------------------------
 CGameEngine::CGameEngine():
 m_device(0),
-m_pause(true),
-m_step(false)
+m_pause(false),
+m_step(true)
 {
     Initialize();
 }
@@ -131,6 +131,7 @@ void CGameEngine::Update(float dt)
     {
         current_frame = 0;
         MgrAI::Get().Update();
+        if(!m_pause) kNN::Get().Step();
         if(m_step) m_pause = true;
     }
     else
@@ -148,20 +149,21 @@ void CGameEngine::WriteOutDebug(float dt)
     out += L"\ndt: ";
     out += dt;
 #endif
-    out += L"\nPause: ";
-    out += m_pause;
-    out += L"\nStep: ";
-    out += m_step;
+    out += L"\nPause is ";
+    out += (m_pause?L"on":L"off");
+    out += L"\nStep mode is ";
+    out += (m_step?L"on":L"off");
     out += L"\nUpdate period: ";
     out += MgrAI::Get().GetFrequency();
     out += L"\n\n";
     MgrUnit::Get().GetActor().Write(out);
     kNN::Get().Write(out);
-
+    out += L"\n";
     out += L"\"P\": to toggle pause mode.\n";
     out += L"\"O\": to toggle step mode. With step mode ON, press \"Space\" to move.\n";
     out += L"\"G\": to toggle grid.\n";
     out += L"\"F\": to toggle field of view.\n";
+    out += L"\"D\": to toggle the previous position highlight.\n";
 
     m_dbgText->setText(out.c_str());
 }

@@ -1,4 +1,5 @@
 #include "CTerrainObject.h"
+#include "Grid.h"
 
 #define _OUT(label, value) out += label; out += value; out += "\n";
 
@@ -26,10 +27,10 @@ void CTerrainObject::Render() const
 {
     for( int row=0; row<m_iRows; row++ )
     {
-        int Y = m_realPosition.Y + row * Tilesize.Height;
+        int Y = m_realPosition.Y + row * Grid::Get().tilesize.Height;
         for( int col=0; col<m_iCols; col++ )
         {
-            int X = m_realPosition.X + col * Tilesize.Width;
+            int X = m_realPosition.X + col * Grid::Get().tilesize.Width;
 
             DrawRectangle( m_color, position2di(X, Y) );
         }

@@ -1,6 +1,7 @@
 #include "IObject.h"
 #include "CTile.h"
 #include "CObjectTypeManager.h"
+#include "Grid.h"
 #include <cassert>
 
 #define _OUT(label, value) out += label; out += value; out += "\n";
@@ -25,8 +26,8 @@ void IObject::Set( int x, int y )
     m_gridPosition.Y = y;
 
     // update the position on the window
-    m_realPosition.X = x * Tilesize.Width;
-    m_realPosition.Y = y * Tilesize.Height;
+    m_realPosition.X = x * Grid::Get().tilesize.Width;
+    m_realPosition.Y = y * Grid::Get().tilesize.Height;
 }
 
 // ----------------------------------------------------------------------------
@@ -42,8 +43,8 @@ void IObject::CloneFrom( IObject *obj )
 position2di IObject::GetCenter() const
 {
     return position2di( 
-        m_realPosition.X + Tilesize.Width / 2, 
-        m_realPosition.Y + Tilesize.Height / 2 
+        m_realPosition.X + Grid::Get().tilesize.Width / 2, 
+        m_realPosition.Y + Grid::Get().tilesize.Height / 2 
         );
 }
 
@@ -82,10 +83,10 @@ void IObject::SetTile( CTile *tile )
 // ----------------------------------------------------------------------------
 void IObject::Write( stringw &out ) const
 {
-    out += L"[";
-    out += m_id;
-    out += L"] ";
-    _OUT(L"Type: ", MgrObjectType::Get().GetTypeFromInt(m_iType));
+    //out += L"[";
+    //out += m_id;
+    //out += L"] ";
+    //_OUT(L"Type: ", MgrObjectType::Get().GetTypeFromInt(m_iType));
     out += L"Position = (";
     out += m_gridPosition.X;
     out += L", ";

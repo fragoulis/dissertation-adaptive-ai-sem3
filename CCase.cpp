@@ -7,6 +7,7 @@
 CCase::CCase():
 m_fitness(1.0)
 {
+    Deactivate();
 }
 
 // ----------------------------------------------------------------------------
@@ -64,14 +65,14 @@ void CCase::Render() const
             )
         );
 
-    stringw str;
-    str += L"fitness=";
-    str += m_fitness;
-    m_text->setText(str.c_str());
-
     int x = m_state.GetPosition().X;
     int y = m_state.GetPosition().Y + CState::s_scaled.gridHeight;
     m_text->setRelativePosition(
         rect<s32>(x, y, x+CState::s_scaled.gridWidth, y+10)
         );
+
+    stringw str;
+    str += L"fitness=";
+    str += m_fitness;
+    m_text->setText(str.c_str());
 }

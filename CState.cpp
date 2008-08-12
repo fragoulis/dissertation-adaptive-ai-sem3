@@ -99,7 +99,7 @@ void CState::Render() const
 int CState::GetFeature( int index ) const 
 { 
     if( index < 0 )
-        index = m_features.size() + index;
+        index = (int)m_features.size() + index;
 
     return m_features[index]; 
 }

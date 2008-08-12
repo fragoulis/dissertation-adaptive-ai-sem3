@@ -3,17 +3,22 @@
 #include "Grid.h"
 #include "logger.h"
 #include "CObjectTypeManager.h"
+#include "CColorManager.h"
 #include "Random.h"
 
 #define _OUT(label, value) out += label; out += value; out += "\n";
 
 #define _PUNISH_DIAGONAL_
 
+// extra action
+const int NEUTRAL = -1;
+
 // ----------------------------------------------------------------------------
 _debug CUnit::debug;
 
 // ----------------------------------------------------------------------------
-CUnit::CUnit()
+CUnit::CUnit():
+m_action(NEUTRAL)
 {
     debug.drawFOV = false;
     debug.drawDir = false;
@@ -54,8 +59,9 @@ double CUnit::ActOn( E_ACTION action )
     {
         if( mgr.IsOfType("end", occ->GetType()) ) reset = true;
         else if( mgr.IsOfType("wall", occ->GetType()) ) m_iHealth = 0;
-        else if( mgr.IsOfType("small_debris", occ->GetType()) ) m_iHealth -= 50;
         else if( mgr.IsOfType("big_debris", occ->GetType()) ) m_iHealth = 0;
+        else if( mgr.IsOfType("small_debris", occ->GetType()) ) m_iHealth -= 50;
+        else if( mgr.IsOfType("water", occ->GetType()) ) m_iHealth -= 10;
     }
 
     m_iHealth = ( m_iHealth < 0 ) ? 0 : m_iHealth;
@@ -69,13 +75,6 @@ double CUnit::ActOn( E_ACTION action )
         return 1.1;
     }
 
-    switch(action)
-    {
-    case LEFT: IObject::Set( m_gridPosition.X-1, m_gridPosition.Y+1 ); break;
-    case DOWN: IObject::Set( m_gridPosition.X, m_gridPosition.Y+1 ); break;
-    case RIGHT: IObject::Set( m_gridPosition.X+1, m_gridPosition.Y+1 ); break;
-    }
-
 #ifdef _PUNISH_DIAGONAL_
     switch(action)
     {
@@ -83,6 +82,9 @@ double CUnit::ActOn( E_ACTION action )
     case RIGHT: fitness *= 0.95; break;
     }
 #endif
+
+    m_action = (int)action;
+    Update();
 
     return fitness;
 }
@@ -118,7 +120,7 @@ void CUnit::SetDesc( CUnitDesc *desc )
     assert(desc!=0);
 
     m_desc = desc;
-    Reset();
+    //Reset();
 }
 
 // ----------------------------------------------------------------------------
@@ -132,28 +134,26 @@ void CUnit::Reset()
     int X = RandInt(1, Grid::Get().tilesX-2);
 
     Set(X, m_initialGridPos.Y);
+    m_previousGridPos.X = X;
+    m_previousGridPos.Y = m_initialGridPos.Y;
 }
 
 // ----------------------------------------------------------------------------
 void CUnit::Render() const
 {
-    rts::video->draw2DRectangle( 
-        core::rect<s32>( m_realPosition, Tilesize ), 
-        m_desc->GetColor(), 
-        m_desc->GetColor(),
-        m_desc->GetColor(),
-        m_team->GetColor()
-        );
+    DrawRectangle( m_desc->GetColor(), m_realPosition );
+    
+    Grid& grid = Grid::Get();
 
     if( debug.drawFOV )
     {
         position2di ll(
-            Tilesize.Width, 
-            m_realPosition.Y + Tilesize.Height
+            grid.tilesize.Width, 
+            m_realPosition.Y + grid.tilesize.Height
             );
         position2di hr(
-            Grid::Get().width - Tilesize.Width, 
-            m_realPosition.Y + Tilesize.Height + m_desc->GetFOV() * Tilesize.Height
+            grid.width - grid.tilesize.Width, 
+            m_realPosition.Y + grid.tilesize.Height + m_desc->GetFOV() * grid.tilesize.Height
             );
 
         rts::video->draw2DRectangle(
@@ -164,22 +164,36 @@ void CUnit::Render() const
 
     if( debug.drawDir )
     {
-        position2di dir = position2di(
-            int(m_direction.X*Tilesize.Width), 
-            int(m_direction.Y*Tilesize.Height)
+        position2di prevPos(
+            m_previousGridPos.X * grid.tilesize.Width,
+            m_previousGridPos.Y * grid.tilesize.Height
             );
-        position2di pos = GetCenter();
-        rts::video->draw2DLine( 
-            pos, 
-            pos + dir,
-            SColor(250,0,0,0) 
-            );
+
+        DrawRectangle( *(MgrColor::Get().GetData("green")), prevPos );
     }
     
     if( debug.drawId ) SetRenderID(GetID());
     else
         SetRenderID(0);
 
+}
+
+// ----------------------------------------------------------------------------
+void CUnit::Update()
+{
+    if(m_action==NEUTRAL) return;
+    
+    m_previousGridPos = m_gridPosition;
+    switch((E_ACTION)m_action)
+    {
+    case LEFT: IObject::Set( m_gridPosition.X-1, m_gridPosition.Y+1 ); break;
+    case DOWN: IObject::Set( m_gridPosition.X, m_gridPosition.Y+1 ); break;
+    case RIGHT: IObject::Set( m_gridPosition.X+1, m_gridPosition.Y+1 ); break;
+    }
+
+    m_action = NEUTRAL;
+
+    _log_2n("Unit moved to: ", m_gridPosition.X, ", ", m_gridPosition.Y);
 }
 
 // ----------------------------------------------------------------------------

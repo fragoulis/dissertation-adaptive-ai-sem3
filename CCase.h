@@ -24,6 +24,9 @@ public:
     //! Returns a const pointer to the associated state.
     const CState& GetState() const { return m_state; }
 
+    //! Returns a non-const pointer to the associated state.
+    CState& GetState() { return m_state; }
+
     //! Returns the fitness.
     double GetFitness() const { return m_fitness; }
 
