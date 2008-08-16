@@ -28,6 +28,9 @@ public:
 
     //! Returns if object is active.
     bool IsActive() const { return m_bActive; }
+    
+    //! Toggles active.
+    void ToggleActive() { m_bActive = !m_bActive; }
 
     //! Sets the text.
     void SetText( const wchar_t *text ) { m_text->setText(text); }

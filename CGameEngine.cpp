@@ -17,8 +17,8 @@
 // ----------------------------------------------------------------------------
 CGameEngine::CGameEngine():
 m_device(0),
-m_pause(false),
-m_step(true)
+m_pause(true),
+m_step(false)
 {
     Initialize();
 }
@@ -47,7 +47,7 @@ void CGameEngine::Initialize()
         false,                          // VSync on/off.
         this);                          // An EventReceiver object.
 
-	m_device->setWindowCaption(L"Real-Time Strategy AI Testbed");
+	m_device->setWindowCaption(L"Domain knowledge gathering and transfer");
 
     // Acquire pointers to main interfaces to ease our access
     rts::video = m_device->getVideoDriver();
@@ -108,7 +108,8 @@ void CGameEngine::Deinitialize()
 void CGameEngine::Run()
 {
     m_dtimer.Start();
-    while(m_device->run())
+    while( m_device->run() && 
+           (kNN::Get().GetTriesCount() <= config::max_tries))
 	{
         float dt = m_dtimer.GetDeltaTime();
         WriteOutDebug(dt);
@@ -127,7 +128,7 @@ void CGameEngine::Update(float dt)
 {
     static int current_frame = MgrAI::Get().GetFrequency();
 
-    if( current_frame == MgrAI::Get().GetFrequency() )
+    if( current_frame > MgrAI::Get().GetFrequency() )
     {
         current_frame = 0;
         MgrAI::Get().Update();
@@ -143,27 +144,30 @@ void CGameEngine::Update(float dt)
 void CGameEngine::WriteOutDebug(float dt)
 {
     stringw out;
-#ifdef _DEBUG
     out += L"FPS: ";
     out += rts::video->getFPS();
+#ifdef _DEBUG
     out += L"\ndt: ";
     out += dt;
+    out += L"\nUpdate period: ";
+    out += MgrAI::Get().GetFrequency();
 #endif
     out += L"\nPause is ";
     out += (m_pause?L"on":L"off");
     out += L"\nStep mode is ";
     out += (m_step?L"on":L"off");
-    out += L"\nUpdate period: ";
-    out += MgrAI::Get().GetFrequency();
+    out += L"\nAdjust the speed with '+' and '-'";
     out += L"\n\n";
     MgrUnit::Get().GetActor().Write(out);
     kNN::Get().Write(out);
     out += L"\n";
+    out += L"Press \"Space\" to move on step mode.\n\n";
     out += L"\"P\": to toggle pause mode.\n";
     out += L"\"O\": to toggle step mode. With step mode ON, press \"Space\" to move.\n";
     out += L"\"G\": to toggle grid.\n";
     out += L"\"F\": to toggle field of view.\n";
     out += L"\"D\": to toggle the previous position highlight.\n";
+    out += L"\"R\": to toggle debug rendering of the cases.\n";
 
     m_dbgText->setText(out.c_str());
 }
@@ -185,10 +189,6 @@ bool CGameEngine::OnEvent( const SEvent& event )
     {
         switch( event.KeyInput.Key )
         {
-        case KEY_KEY_S:
-            CUnit::debug.drawId = !CUnit::debug.drawId;
-            return true;
-
         case KEY_KEY_D:
             CUnit::debug.drawDir = !CUnit::debug.drawDir;
             return true;
@@ -220,6 +220,10 @@ bool CGameEngine::OnEvent( const SEvent& event )
 
         case KEY_MINUS:
             MgrAI::Get().SlowDown();
+            return true;
+
+        case KEY_KEY_R:
+            kNN::Get().ToggleActive();
             return true;
         }
     }

@@ -36,7 +36,13 @@ private:
     //! Unit position. Render specific.
     mutable position2di m_position;
 
+    //! Unit's X position.
+    int m_x;
+
 public:
+    //! Initializes the state.
+    void InitializeOLD( const CUnit &unit );
+
     //! Initializes the state.
     void Initialize( const CUnit &unit );
 
@@ -48,6 +54,9 @@ public:
 
     //! Returns the type id of the tile's occupier.
     int GetFeature( int index ) const;
+
+    //! Returns the positional feature.
+    int GetX() const { return m_x; }
 
     //! Writes the state to a stream.
     void Save( std::ostream &out ) const;

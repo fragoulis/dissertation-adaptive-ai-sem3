@@ -45,11 +45,11 @@ void CAIManager::Update()
 // ----------------------------------------------------------------------------
 void CAIManager::SpeedUp() 
 { 
-    if( m_iFrequency >= 20 ) m_iFrequency /= 2; 
+    if( m_iFrequency >= 2 ) m_iFrequency >>= 1; 
 }
 
 // ----------------------------------------------------------------------------
 void CAIManager::SlowDown() 
 { 
-    if( m_iFrequency <= 40 ) m_iFrequency *= 2; 
+    if( m_iFrequency <= 32 ) m_iFrequency <<= 1; 
 }
