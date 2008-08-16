@@ -18,6 +18,9 @@ std::string config::active_map;
 irr::core::dimension2di config::wndSize;
 
 // ----------------------------------------------------------------------------
+int config::max_tries;
+
+// ----------------------------------------------------------------------------
 void config::init( const char *filename )
 {
     IrrXMLReader *xml = createIrrXMLReader(filename);
@@ -27,6 +30,7 @@ void config::init( const char *filename )
     xml->read();
     fullscreen   = xml->getAttributeValueAsInt("fullscreen");
     active_map   = xml->getAttributeValue("map");
+    max_tries    = xml->getAttributeValueAsInt("max_tries");
 
     // read consiquent children tags
     while(xml->read())

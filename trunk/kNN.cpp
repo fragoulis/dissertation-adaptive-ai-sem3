@@ -9,7 +9,25 @@
 #include "Renderer.h"
 #include <string>
 
+// Turns on random learning which actually utilizes the offline learning of
+// the algorithm.
 //#define _RANDOM_LEARNING_ON_
+
+// This flag forces the algorithm to pick the preferred action based on the
+// majority vote of the observed actions over the best average fitness, which
+// is the default.
+//#define _MAJORITY_VOTE_OVER_FITNESS_
+
+// When this flag is enabled, when a case occurs with a state identical to 
+// another state in the casebase, but with different observed action, we 
+// keep the one with the highest fitness only, instead of keeping both and 
+// averaging the fitnesses.
+//#define _KEEP_HIGHER_FITNESS_
+
+// When this flag is enabled, when a case occurs whit a state identical to
+// another state in the casbase and with the same action, we average over
+// both the new and the old fitness returned.
+#define _AVERAGE_IDENTICAL_CASES_
 
 // ----------------------------------------------------------------------------
 #ifdef _DEBUG
@@ -149,6 +167,10 @@ void kNN::_RunNormal( CCase &newcase, CUnit &unit )
         CCase *oc = _ActOnAction(unit);
         if( oc )
         {
+            _Finalize(casepath, oc, unit);
+        }
+        else
+        {
             // If case comparison does not find anything similar, go ahead
             // and add the new case.
             newcase.SetAction(m_action);
@@ -160,10 +182,6 @@ void kNN::_RunNormal( CCase &newcase, CUnit &unit )
             m_casebase.push_back(newcase);
 
             _Finalize(casepath, & (m_casebase.back()), unit);
-        }
-        else
-        {
-            _Finalize(casepath, oc, unit);
         }
 
         m_step = STATE_CHOOSE_ACTION;
@@ -241,7 +259,7 @@ void kNN::_ChooseAction( CCase &newcase )
         if( ap.votes > 0 )
             ap.avg_fitness /= ap.votes;
         else
-            ap.avg_fitness = 1.0;
+            ap.avg_fitness = 0.65;
     }
 
 #ifdef _DEBUG
@@ -250,8 +268,25 @@ void kNN::_ChooseAction( CCase &newcase )
         std::cout << action_name(i) << "(" << action_poll[i].votes << ", " << action_poll[i].avg_fitness << ") ";
 #endif
 
+#ifdef _MAJORITY_VOTE_OVER_FITNESS_
     // Sort action poll according to average fitness from higher to lower.
-    _SortActions(action_poll);
+    _SortActionsByVotes(action_poll);
+    chosen_action = action_poll[0].action;
+    
+    // See if there are more than one with best fitness.
+    for( int i=1; i<NUM_OF_ACTIONS; i++ )
+    {
+        if( action_poll[0].votes == action_poll[i].votes )
+        {
+            if( action_poll[0].avg_fitness < action_poll[i].avg_fitness )
+            {
+                chosen_action = action_poll[i].action;
+            }
+        }
+    }
+#else
+    // Sort action poll according to average fitness from higher to lower.
+    _SortActionsByFitness(action_poll);
     chosen_action = action_poll[0].action;
     
     // See if there are more than one with best fitness.
@@ -265,6 +300,7 @@ void kNN::_ChooseAction( CCase &newcase )
             }
         }
     }
+#endif // _MAJORITY_VOTE_ONLY_
 
     assert(chosen_action>=0);
 #ifdef _DEBUG
@@ -293,7 +329,9 @@ CCase* kNN::_ActOnAction(CUnit &unit )
         CCase *pCase = oldcase.oCase;
         
         if( 0 == oldcase.distance )
-        {   
+        {
+#ifdef _AVERAGE_IDENTICAL_CASES_
+
             if( m_action == pCase->GetAction() )
             {
                 if( !irr::core::equals( (float)pCase->GetFitness(), (float)m_fitness ) )
@@ -312,6 +350,28 @@ CCase* kNN::_ActOnAction(CUnit &unit )
                 // another one.
                 return pCase;
             }
+#ifdef _KEEP_HIGHER_FITNESS_
+            else
+#endif
+#endif // _AVERAGE_IDENTICAL_CASES_
+
+#ifdef _KEEP_HIGHER_FITNESS_
+            
+            // If they two cases have same states but different actions
+            // keep the case with the highest fitness.
+            if( m_fitness > pCase->GetFitness() )
+            {
+                _log_2n("Replacing case...[fitness=", pCase->GetFitness(), " action= ", action_name(pCase->GetAction()));
+
+                pCase->SetAction(m_action);
+                pCase->SetFitness(m_fitness);
+
+                _log_2n("with this case...[fitness=", pCase->GetFitness(), " action= ", action_name(pCase->GetAction()));
+
+                return pCase;
+            }
+
+#endif // _KEEP_HIGHER_FITNESS
         }
 
     } // for 
@@ -326,10 +386,10 @@ void kNN::_RunRandomly( CCase &newcase, CUnit &unit )
     CCasePath& casepath = _Initialize();
 
     // Choose a random action
-    E_ACTION chosen_action = (E_ACTION)(rand()%NUM_OF_ACTIONS);
+    m_action = (E_ACTION)(rand()%NUM_OF_ACTIONS);
 
     // Run the action and retrieve a fitness
-    m_fitness = unit.ActOn(chosen_action);
+    m_fitness = unit.ActOn(m_action);
 
     _CheckFitness();
 
@@ -345,7 +405,9 @@ void kNN::_RunRandomly( CCase &newcase, CUnit &unit )
         
         if( d == 0 )
         {   
-            if( chosen_action == oldcase.GetAction() )
+#ifdef _AVERAGE_IDENTICAL_CASES_
+
+            if( m_action == oldcase.GetAction() )
             {
                 if( !irr::core::equals( (float)oldcase.GetFitness(), (float)m_fitness ) )
                 {
@@ -369,16 +431,40 @@ void kNN::_RunRandomly( CCase &newcase, CUnit &unit )
                 // another one.
                 return;
             }
+#ifdef _KEEP_HIGHER_FITNESS_
+            else
+#endif
+#endif // _AVERAGE_IDENTICAL_CASES_
+
+#ifdef _KEEP_HIGHER_FITNESS_
+            
+            // If they two cases have same states but different actions
+            // keep the case with the highest fitness.
+            if( m_fitness > oldcase.GetFitness() )
+            {
+                _log_2n("Replacing case...[fitness=", oldcase.GetFitness(), " action= ", action_name(oldcase.GetAction()));
+
+                oldcase.SetAction(m_action);
+                oldcase.SetFitness(m_fitness);
+
+                _log_2n("with this case...[fitness=", oldcase.GetFitness(), " action= ", action_name(oldcase.GetAction()));
+
+                _Finalize(casepath, &oldcase, unit);
+
+                return;
+            }
+
+#endif // _KEEP_HIGHER_FITNESS
         }
 
     } // for 
 
     // If case comparison does not find anything similar, go ahead
     // and add the new case.
-    newcase.SetAction((E_ACTION)chosen_action);
+    newcase.SetAction(m_action);
     newcase.SetFitness(m_fitness);
 
-    _log_2n("Adding new case...[action=", action_name(chosen_action), " fitness=", m_fitness );
+    _log_2n("Adding new case...[action=", action_name(m_action), " fitness=", m_fitness );
 
     // Push case to casebase.
     m_casebase.push_back(newcase);
@@ -446,7 +532,7 @@ void kNN::Write( stringw &out ) const
 }
 
 // ----------------------------------------------------------------------------
-void kNN::_SortActions( std::vector<_action> &actions ) const
+void kNN::_SortActionsByFitness( std::vector<_action> &actions ) const
 {
     bool no_swaps;
     do 
@@ -455,6 +541,27 @@ void kNN::_SortActions( std::vector<_action> &actions ) const
         for( int i=0; i<(int)actions.size()-1; i++ )
         {
             if( actions[i].avg_fitness < actions[i+1].avg_fitness )
+            {
+                _action temp = actions[i];
+                actions[i] = actions[i+1];
+                actions[i+1] = temp;
+                no_swaps = false;
+            }
+        }
+    }
+    while(!no_swaps);
+}
+
+// ----------------------------------------------------------------------------
+void kNN::_SortActionsByVotes( std::vector<_action> &actions ) const
+{
+    bool no_swaps;
+    do 
+    {
+        no_swaps = true;
+        for( int i=0; i<(int)actions.size()-1; i++ )
+        {
+            if( actions[i].votes < actions[i+1].votes )
             {
                 _action temp = actions[i];
                 actions[i] = actions[i+1];
@@ -507,14 +614,11 @@ void kNN::SaveResults() const
     double total_fitness = 0.0;
     const int size = (int)m_casepaths.size();
     CasePaths::const_iterator it = m_casepaths.begin();
-    for(
-        int cur = 1; 
-        it != m_casepaths.end(); 
-        ++it, ++cur )
+    for( int cur = 0; it != m_casepaths.end(); ++it )
     {
         if( cur < size-1 )
         {
-            path_out << cur << ": ";
+            path_out << ++cur << ": ";
 
             (*it).Save(path_out);
 
@@ -523,7 +627,7 @@ void kNN::SaveResults() const
     }
 
     path_out << "Average fitness = ";
-    path_out << (total_fitness / size);
+    path_out << (total_fitness / (size-1));
 }
 
 // ----------------------------------------------------------------------------

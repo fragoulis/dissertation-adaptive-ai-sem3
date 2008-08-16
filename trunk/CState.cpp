@@ -5,13 +5,7 @@
 #include "CObjectTypeManager.h"
 #include "CTerrainManager.h"
 
-#define _USE_POSITION_FEATURE_
-
-#ifdef _USE_POSITION_FEATURE_
-const int FEATURES = 61;
-#else
 const int FEATURES = 60;
-#endif
 
 // ----------------------------------------------------------------------------
 scaled_values CState::s_scaled;
@@ -53,34 +47,14 @@ void CState::Render() const
         it != m_features.end(); 
         ++it, ++i )
     {
-#ifdef _USE_POSITION_FEATURE_
-        if( i == FEATURES - 1 )
-        {
-            DrawRectangle(
-                * (MgrColor::Get().GetData("green")), 
-                position2di(
-                    m_position.X + (*it) * s_scaled.tileWidth, 
-                    m_position.Y - s_scaled.tileHeight
-                    ),
-                dimension2di(
-                    s_scaled.tileWidth,
-                    s_scaled.tileHeight
-                    )
-                );
-            continue;
-        }
-#endif
-
         int iType = *it;
         if( iType==0 ) continue;
-         
-        iType /= (i+1);
 
         const stringw &sType = MgrObjectType::Get().GetTypeFromInt(iType);
         const CTerrainObject *obj = MgrTerrain::Get().GetData(sType);
 
-        const int x = i % grid.tilesX;
-        const int y = ( i - x ) / grid.tilesX;
+        const int x = (m_x + i) % grid.tilesX;
+        const int y = ( i / grid.tilesX );
         DrawRectangle(
             obj->GetColor(), 
             position2di(
@@ -93,6 +67,18 @@ void CState::Render() const
                 )
             );
     }
+
+    DrawRectangle(
+        * (MgrColor::Get().GetData("green")), 
+        position2di(
+            m_position.X + m_x * s_scaled.tileWidth, 
+            m_position.Y - s_scaled.tileHeight
+            ),
+        dimension2di(
+            s_scaled.tileWidth,
+            s_scaled.tileHeight
+            )
+        );
 }
 
 // ----------------------------------------------------------------------------
@@ -106,6 +92,43 @@ int CState::GetFeature( int index ) const
 
 // ----------------------------------------------------------------------------
 void CState::Initialize( const CUnit &unit )
+{
+    // use field of view to determine how many tiles the unit sees ahead
+    const int fov = unit.GetFOV();
+
+    Grid& grid = Grid::Get();
+    const int px = unit.GetGridPosition().X;
+    const int py = unit.GetGridPosition().Y;
+
+    assert(px>=0 && px<grid.tilesX);
+    assert(py>=0 && py<grid.tilesY);
+
+    const int start   = 0;
+    const int end     = grid.tilesX * fov;
+    const int abs_end = grid.tilesX * grid.tilesY;
+    
+    for( int i=start; i<end; i++ )
+    {
+        const int x = (px + i) % grid.tilesX;
+        const int y = ( i / grid.tilesX ) + 1;
+
+        const int index = x + (py + y) * grid.tilesX;
+
+        int type = 0;
+        if( index < abs_end )
+        {
+            const CTile& tile = grid.GetTile(index);
+            if( tile.GetOccupier() ) type = tile.GetOccupier()->GetType();
+        }
+
+        m_features.push_back(type);
+    }
+
+    m_x = px;
+}
+
+// ----------------------------------------------------------------------------
+void CState::InitializeOLD( const CUnit &unit )
 {
     // use field of view to determine how many tiles the unit sees ahead
     const int fov = unit.GetFOV();
@@ -154,15 +177,12 @@ void CState::Initialize( const CUnit &unit )
 void CState::Save( std::ostream &out ) const
 {
     Features::const_iterator it = m_features.begin();
-    for(
-        int i=0; 
-        it != m_features.end(); 
-        ++it, ++i )
+    for(; it != m_features.end(); ++it )
     {
-        out << *it;
-        if( i < FEATURES-1 )
-            out << " ";
+        out << *it << " ";
     }
+
+    out << m_x;
 }
 
 // ----------------------------------------------------------------------------
@@ -175,6 +195,8 @@ void CState::Load( std::istream &in )
         in >> feature;
         m_features.push_back(feature);
     }
+
+    in >> m_x;
 }
 
 // ----------------------------------------------------------------------------

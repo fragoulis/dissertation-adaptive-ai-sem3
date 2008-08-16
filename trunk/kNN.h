@@ -93,6 +93,9 @@ public:
     //! Gives the signal to continue the algorith.
     void Step() { if(STATE_PAUSED == m_step) m_step = STATE_GET_FITNESS; }
 
+    //! Returns the number of tries.
+    int GetTriesCount() const { return (int)m_casepaths.size(); }
+
 private:
     //! Constructor.
     kNN();
@@ -101,7 +104,10 @@ private:
     ~kNN();
 
     //! Sorts actions by fitness.
-    void _SortActions( std::vector<_action> &actions ) const;
+    void _SortActionsByFitness( std::vector<_action> &actions ) const;
+
+    //! Sorts actions by votes.
+    void _SortActionsByVotes( std::vector<_action> &actions ) const;
 
     //! Checks if algorithm is starting.
     bool _IsAlgoStarting() const { return ( ALGO_STARTING == m_state ); }

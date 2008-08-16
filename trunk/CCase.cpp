@@ -48,7 +48,7 @@ void CCase::Render() const
     m_state.Render();
 
     // get the last feature
-    int X = m_state.GetFeature(-1);
+    int X = m_state.GetX();
     if(m_action.GetDirection() == LEFT) X--;
     else if(m_action.GetDirection() == RIGHT) X++;
 

@@ -10,4 +10,5 @@ public:
     static bool fullscreen;
     static irr::core::dimension2di wndSize;
     static std::string active_map;
+    static int max_tries;
 };
